@@ -5,12 +5,8 @@ var router = express.Router();
 
 var transaction = {};
 
-//INIT DATABASE INSTANCE
-
 //CREATE DB SCHEMA FOR LOGIN
 var Schema = mongoose.Schema;
-
-console.log('entro');
 
 //CALLBACKS
 router.get('/mean/api/getUser', function(request, response, next) {

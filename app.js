@@ -4,7 +4,6 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var path = require('path');
-var dateFormat = require('date-format');
 
 var express = require('express');
 var session = require('express-session');
@@ -17,6 +16,7 @@ var socketio = require('socket.io').listen(server);
 //ROUTES INCLUDES
 var login = require('./controllers/login-controller');
 var chat = require('./controllers/chat-controller');
+var io = require('./controllers/socket-controller')(socketio);
 
 
 // INIT CONFIGURATION
@@ -39,35 +39,6 @@ app.get('/room/home', function(request, response){
 	response.sendfile('./public/views/chat.html');
 });
 
-
-//SOCKETS
-var nicknames = {};
-socketio.sockets.on('connection', function(socket){
-	socket.on('message:send', function(data){
-		socketio.sockets.emit('message:new', {msg: data, name: socket.userLogged.name, date: dateFormat.asString('MM/dd hh:mm:ss', new Date())});
-	});
-
-	socket.on('user:login', function(data, callback){
-		if(data.username in nicknames){
-			callback(false);
-		}else{
-			callback(true);
-			socket.userLogged = data;
-			nicknames[socket.userLogged.username] = 1;
-			updateNickNames();
-		}
-	});
-
-	socket.on('disconnect', function(data){
-		if(!socket.userLogged) return;
-		delete nicknames[socket.userLogged.username];
-		updateNickNames();
-	});
-
-	function updateNickNames(){
-		socketio.sockets.emit('user:list', nicknames);
-	}
-});
 
 //RUN SERVER BY PORT 3000
 server.listen(3000, function(){

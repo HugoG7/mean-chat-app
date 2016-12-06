@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="meanChat-Chat">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
 	<title>Chat Room- Mean-Chat</title>
 	<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" />
 </head>
-<body>
+<body ng-controller="chatController">
 	<div class="container">
 		<header>
 			<nav class="jumbotron text-center">
@@ -21,18 +21,21 @@
 					<div class="panel-heading">
 						InBox-Chat
 					</div>
-					<div class="panel-body" id="chat">
+					<div class="panel-body" id="chat" ng-bind-html="chat.message">
+				
 					</div>
 				</div>
 				<form class="input-group" id="formMessage">
-					<input type="text" id="message" class="form-control input-md">
+					<input type="text" id="message" class="form-control input-md" ng-model="chat.input">
 					<span class="input-group-btn">
-						<button class="btn btn-md btn-primary" type="submit">Send</button>
+						<button class="btn btn-md btn-primary" type="button" ng-click="sendMessage()">Send</button>
 					</span>
 				</form>
 			</div>
-			<div id="content-users" class="col-md-5">
-				<ul id="lsUsers"></ul>
+			<div id="content-users" class="col-md-5" >
+				<ul id="lsUsers">
+					<li ng-repeat="user in chat.userList">{{user}}</li>
+				</ul>
 			</div>
 		</div>
 
@@ -41,8 +44,9 @@
 	</div>
 
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.32/angular.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.9/angular.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-sanitize/1.5.9/angular-sanitize.min.js"></script>
 	<script src="../resource/js/socket.io.js"></script>
-	<script src="../resource/js/chat-jquery.js"></script>
+	<script src="../resource/js/chat.js"></script>
 </body>
 </html>
