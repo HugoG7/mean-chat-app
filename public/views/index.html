@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="meanChat-Login">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+	<title>Index View - Mean-Chat</title>
+	<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" />
+</head>
+<body ng-controller="loginController">
+	<div class="container">
+		<!-- Header -->
+		<header>
+			<nav class="jumbotron text-center">
+				<h1>Login Page <span class="label label-info">MEAN-CHAT</span></h1>
+			</nav>
+		</header>
+
+		<!-- Body -->
+		<div class="row">
+			<form>
+				<div class="form-group">
+					<label for="username">Username:</label>
+					<input type="text" id="username" class="form-control" ng-model="login.username"/>
+				</div>
+				<div class="form-group">
+					<label for="password">Password:</label>
+					<input type="password" id="password" class="form-control" ng-model="login.password"/>
+				</div>
+				<div class="form-group" ng-switch="result.code">
+				  <div ng-switch-when="0"><span class="label label-danger">{{result.message}}</span></div>
+				  <div ng-switch-when="1"><span class="label label-success">{{result.message}}</span></div>
+				  <div ng-switch-default></div>
+				</div>
+
+				<div class="form-group">
+   					 <div class="col-sm-10">
+      					<button type="submit" class="btn btn-info" ng-click="doLogin()">Log in</button>
+      					<button ng-if="result.code == 1" type="submit" class="btn btn-success" ng-click="goToHome()">Go to Room</button>
+    				</div>
+  				</div>
+			</form>
+		</div>
+
+		<!-- Footer  -->
+		<footer>
+			
+		</footer>
+	</div>
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.32/angular.min.js"></script>
+	<script src="../resource/js/login.js"></script>
+</body>
+</html>

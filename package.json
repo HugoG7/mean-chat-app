@@ -1,0 +1,17 @@
+{
+  "name": "MEAN-Chat",
+  "version": "1.0.0",
+  "description": "It is a Chat with MEAN tecnhologies",
+  "main": "app.js",
+  "dependencies": {
+    "async": "latest",
+    "body-parser": "~1.15.1",
+    "cookie-parser": "~1.4.3",
+    "date-format": "0.0.2",
+    "debug": "~2.2.0",
+    "express": "~4.13.4",
+    "mongoose": "latest",
+    "morgan": "~1.7.0",
+    "socket.io": "~0.9.14"
+  }
+}

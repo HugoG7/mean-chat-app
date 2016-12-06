@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+	<title>Chat Room- Mean-Chat</title>
+	<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" />
+</head>
+<body>
+	<div class="container">
+		<header>
+			<nav class="jumbotron text-center">
+				<h1>Login Page <span class="label label-info">MEAN-CHAT</span></h1>
+				<h3>Current users online: <strong>0</strong></h3>
+			</nav>
+		</header>
+
+		<div class="row">
+			<div id="content-chat" class="col-md-7">
+				<div class="panel panel-info">
+					<div class="panel-heading">
+						InBox-Chat
+					</div>
+					<div class="panel-body" id="chat">
+					</div>
+				</div>
+				<form class="input-group" id="formMessage">
+					<input type="text" id="message" class="form-control input-md">
+					<span class="input-group-btn">
+						<button class="btn btn-md btn-primary" type="submit">Send</button>
+					</span>
+				</form>
+			</div>
+			<div id="content-users" class="col-md-5">
+				<ul id="lsUsers"></ul>
+			</div>
+		</div>
+
+		<footer>	
+		</footer>
+	</div>
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.32/angular.min.js"></script>
+	<script src="../resource/js/socket.io.js"></script>
+	<script src="../resource/js/chat-jquery.js"></script>
+</body>
+</html>
