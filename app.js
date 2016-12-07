@@ -4,19 +4,23 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var path = require('path');
-
 var express = require('express');
 var session = require('express-session');
+
 //INIT EXPRESS
 var app = express();
 
+//INIT SOCKET & MONGO DB
 var server = require('http').createServer(app);
-var socketio = require('socket.io').listen(server);
+var socket = require('socket.io').listen(server);
+var mongoose = require('mongoose');
+
+//INIT DATABASE INSTANCE
+mongoose.connect("mongodb://localhost:27017/mean-chat");
 
 //ROUTES INCLUDES
-var login = require('./controllers/login-controller');
-var chat = require('./controllers/chat-controller');
-var io = require('./controllers/socket-controller')(socketio);
+var login = require('./controllers/login-controller')(express, mongoose);
+var chat = require('./controllers/chat-controller')(express, mongoose, socket);
 
 
 // INIT CONFIGURATION

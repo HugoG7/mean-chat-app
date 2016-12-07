@@ -39,6 +39,13 @@ myapp.controller('chatController', ['$scope', '$http', 'socket', function($scope
 		console.log('Error: ' + data);
 	});
 
+	$http.get('/chat/mean/api/mainChat')
+	.success(function(data){
+		console.log(data);
+	}).error(function(data){
+		console.log('Error: ' + data);
+	});
+
 	socket.on('message:new', function(data){
 		$scope.chat.message += '<strong>' + data.name  + '|' + data.date + '</strong> -' + data.msg + '<br />';
 	});
@@ -57,4 +64,10 @@ myapp.controller('chatController', ['$scope', '$http', 'socket', function($scope
 			socket.emit('message:send', $scope.chat.input);
 		$scope.chat.input = '';
 	}
+
+
+	function loadMainChat(){
+
+	}
 }]);
+
