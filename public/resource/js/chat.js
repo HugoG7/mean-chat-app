@@ -1,5 +1,5 @@
 //INIT ANGULAR CONTROLLER
-var myapp = angular.module('meanChat-Chat', ['ngSanitize']);
+var myapp = angular.module('meanChat-Chat', ['ngSanitize','ngCookies']);
 
 myapp.factory('socket', ['$rootScope', function($rootScope){
 	var socket = io.connect();
@@ -26,12 +26,12 @@ myapp.factory('socket', ['$rootScope', function($rootScope){
 	};
 }]);
 
-myapp.controller('chatController', ['$scope', '$http', 'socket', function($scope, $http, socket) {
+myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', function($scope, $http, $cookies, socket) {
   	$scope.chat = { message: '', input: ''};
 
   	$http.get('/chat/mean/api/getUser')
 	.success(function(data){
-		console.log(data);
+		$cookies.put('currentSession', JSON.stringify(data));
 		socket.emit('user:login', data, function(data){
 			//do somenthing
 		});
@@ -41,7 +41,7 @@ myapp.controller('chatController', ['$scope', '$http', 'socket', function($scope
 
 	$http.get('/chat/mean/api/mainChat')
 	.success(function(data){
-		console.log(data);
+		loadMainChat(data);
 	}).error(function(data){
 		console.log('Error: ' + data);
 	});
@@ -50,6 +50,12 @@ myapp.controller('chatController', ['$scope', '$http', 'socket', function($scope
 		$scope.chat.message += '<strong>' + data.name  + '|' + data.date + '</strong> -' + data.msg + '<br />';
 	});
 
+	$scope.sendMessage = function(){
+		if($scope.chat.input != '')
+			socket.emit('message:send', $scope.chat.input);
+		$scope.chat.input = '';
+	}
+
 	socket.on('user:list', function(data){
 		$scope.chat.userList = [];
 		for(var username in data){
@@ -57,17 +63,37 @@ myapp.controller('chatController', ['$scope', '$http', 'socket', function($scope
 		}
 	});
 
+	socket.on('user:status', function(data){
+		if(data.isTyping)
+			$scope.chat.typing = '<strong>' + data.name  + ':</strong> is typing...';
+		else
+			$scope.chat.typing = '';
+	});
 
-	$scope.sendMessage = function(){
-		$scope.chat.message += 'Se envia mensaje <br />';
-		if($scope.chat.input != '')
-			socket.emit('message:send', $scope.chat.input);
-		$scope.chat.input = '';
+	$scope.onTyping = function(event){
+		socket.emit('user:typing', true);
+	}
+
+	$scope.onTypingOut = function(event){
+		socket.emit('user:typing', false);
+	}
+
+	$scope.onSelectUser = function(event, selectedUser){
+		var currentUser = JSON.parse($cookies.get('currentSession'));
+		console.log(currentUser);
+		$http.get('/chat/mean/api/roomChat',  {params:{ currentUser: currentUser.username, selectedUser: selectedUser}})
+		.success(function(data){
+			console.log(data);
+		}).error(function(data){
+			console.log('Error: ' + data);
+		});
 	}
 
 
-	function loadMainChat(){
-
+	function loadMainChat(messages){
+		angular.forEach(messages, function(value, key) {
+		  $scope.chat.message += '<strong>' + value.name  + '|' + value.date + '</strong> -' + value.msg + '<br />';
+		}, null);
 	}
 }]);
 

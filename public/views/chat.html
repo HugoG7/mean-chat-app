@@ -10,7 +10,7 @@
 	<div class="container">
 		<header>
 			<nav class="jumbotron text-center">
-				<h1>Login Page <span class="label label-info">MEAN-CHAT</span></h1>
+				<h1>Room Chat <span class="label label-info">MEAN-CHAT</span></h1>
 				<h3>Current users online: <strong>{{chat.userList.length}}</strong></h3>
 			</nav>
 		</header>
@@ -19,33 +19,35 @@
 			<div id="content-chat" class="col-md-7">
 				<div class="panel panel-info">
 					<div class="panel-heading">
-						InBox-Chat
+						<strong>inbox</strong>
 					</div>
-					<div class="panel-body" id="chat" ng-bind-html="chat.message">
-				
-					</div>
+					<div class="panel-body" id="chat" ng-bind-html="chat.message"></div>
+					<div class="panel-body hide" ng-bind-html="chat.room"></div>
+					<div class="panel-footer" ng-bind-html="chat.typing"></div>
 				</div>
 				<form class="input-group" id="formMessage">
-					<input type="text" id="message" class="form-control input-md" ng-model="chat.input">
+					<input type="text" id="message" class="form-control input-md" ng-model="chat.input" ng-blur="onTypingOut()" ng-keyup="onTyping($event)">
 					<span class="input-group-btn">
 						<button class="btn btn-md btn-primary" type="button" ng-click="sendMessage()">Send</button>
 					</span>
 				</form>
 			</div>
 			<div id="content-users" class="col-md-5" >
-				<ul id="lsUsers">
-					<li ng-repeat="user in chat.userList">{{user}}</li>
+				<h4>Users connected:</h4>
+				<ul id="lsUsers" class="list-group">
+					<li class="list-group-item" ng-repeat="user in chat.userList" ng-click="onSelectUser($event, user)">{{user}}</li>
 				</ul>
 			</div>
 		</div>
 
-		<footer>	
+		<footer>
 		</footer>
 	</div>
 
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.9/angular.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-sanitize/1.5.9/angular-sanitize.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.9/angular-cookies.js"></script>
 	<script src="../resource/js/socket.io.js"></script>
 	<script src="../resource/js/chat.js"></script>
 </body>
