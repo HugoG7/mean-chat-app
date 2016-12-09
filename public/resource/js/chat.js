@@ -27,11 +27,11 @@ myapp.factory('socket', ['$rootScope', function($rootScope){
 }]);
 
 myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', function($scope, $http, $cookies, socket) {
-  	$scope.chat = { message: '', input: ''};
+  	$scope.chat = { message: '', input: '', room: '', enabledMainChat: true};
 
   	$http.get('/chat/mean/api/getUser')
 	.success(function(data){
-		$cookies.put('currentSession', JSON.stringify(data));
+		//$cookies.put('currentSession', JSON.stringify(data));
 		socket.emit('user:login', data, function(data){
 			//do somenthing
 		});
@@ -41,7 +41,7 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 
 	$http.get('/chat/mean/api/mainChat')
 	.success(function(data){
-		loadMainChat(data);
+		loadChatOnPanel(data);
 	}).error(function(data){
 		console.log('Error: ' + data);
 	});
@@ -79,21 +79,27 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 	}
 
 	$scope.onSelectUser = function(event, selectedUser){
-		var currentUser = JSON.parse($cookies.get('currentSession'));
-		console.log(currentUser);
-		$http.get('/chat/mean/api/roomChat',  {params:{ currentUser: currentUser.username, selectedUser: selectedUser}})
+		//var currentUser = JSON.parse($cookies.get('currentSession'));
+		$http.get('/chat/mean/api/roomChat',  {params:{selectedUser: selectedUser}})
 		.success(function(data){
-			console.log(data);
+			$scope.chat.enabledMainChat = false;
+			loadChatOnPanel(data);
 		}).error(function(data){
 			console.log('Error: ' + data);
 		});
 	}
 
 
-	function loadMainChat(messages){
+	function loadChatOnPanel(messages){
+		var logMessage = '';
 		angular.forEach(messages, function(value, key) {
-		  $scope.chat.message += '<strong>' + value.name  + '|' + value.date + '</strong> -' + value.msg + '<br />';
+		  	logMessage += '<strong>' + value.name  + '|' + value.date + '</strong> -' + value.msg + '<br />';
 		}, null);
+
+		if($scope.chat.enabledMainChat)
+			$scope.chat.message = logMessage;
+		else
+			$scope.chat.room = logMessage;
 	}
 }]);
 

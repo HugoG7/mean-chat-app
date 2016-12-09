@@ -21,8 +21,8 @@
 					<div class="panel-heading">
 						<strong>inbox</strong>
 					</div>
-					<div class="panel-body" id="chat" ng-bind-html="chat.message"></div>
-					<div class="panel-body hide" ng-bind-html="chat.room"></div>
+					<div ng-show="chat.enabledMainChat" class="panel-body" id="chat" ng-bind-html="chat.message"></div>
+					<div ng-show="!chat.enabledMainChat" class="panel-body" ng-bind-html="chat.room"></div>
 					<div class="panel-footer" ng-bind-html="chat.typing"></div>
 				</div>
 				<form class="input-group" id="formMessage">
@@ -35,6 +35,7 @@
 			<div id="content-users" class="col-md-5" >
 				<h4>Users connected:</h4>
 				<ul id="lsUsers" class="list-group">
+					<li class="list-group-item" ng-click="chat.enabledMainChat = true">Main Chat</li>
 					<li class="list-group-item" ng-repeat="user in chat.userList" ng-click="onSelectUser($event, user)">{{user}}</li>
 				</ul>
 			</div>
