@@ -25,38 +25,52 @@ module.exports = function(app, mongoose, io){
 	//MOONGOSE PLURALIZE THE NAMES THATS MEANS chat = chats, so we override the collection add 3rd param 'chat'
 	var userDto = mongoose.model('users');
 	var chatDto = mongoose.model('chat', chatSchema, 'chat');
-	var globalChatId = "";
+	var currentChatId = "";
 
 	//CALLBACKS
-	router.get('/mean/api/get', function(request, response, next) {
-		response.json("Hola Mundo");
-	});
-
-	router.get('/mean/api/getUser', function(request, response, next) {
+	router.get('/mean/api/get/user', function(request, response, next) {
 		response.json(request.session.userSession);
 	});
 
-	// ROOM CHAT - PRIVATE
-	router.get('/mean/api/roomChat', function(request, response, next) {
+	//PRIVATE
+	router.get('/mean/api/get/private-chat', function(request, response, next) {
 		var currentUser = request.session.userSession.username;
-		var selectedUser = 'cronaldo';//request.query.selectedUser;
+		var selectedUser = request.query.selectedUser;
 		async.waterfall([
 		    function(callback) {
-		    	chatDto.findOne({"owner" : { $in:[currentUser, selectedUser]}}, function(err, chat){
+		    	var wait = true;
+		    	chatDto.findOne({"owner" : { $size: 2, $all: [currentUser, selectedUser]}}, function(err, chat){
 		        	if(err) response.send(err);
-		        	globalChatId = chat._id;
-		        	callback(null, chat);
+		        	if(chat == null || chat == 'undefained'){
+		        		chatDto.create({name: [currentUser, selectedUser].join('-'), type: 'private', owner: [currentUser, selectedUser]}, 
+		        			function(err, newChat){
+		        			if(err) response.send(err);
+		        			chat = newChat;
+		        			wait = false;
+		        		});
+		        	}else{
+		        		wait = false;
+		        	}
+		        	
+		        	var waiting = setInterval(function(){
+		        		if(!wait){
+		        			clearInterval(waiting);
+		        			currentChatId = chat._id;
+			       			callback(null, chat);
+			       		}
+		        	}, 250);
 		        });
 		    },
 		    function(chat, callback) {
+		    	console.log('8****** NO');
 		    	var result = [];
 		      	async.forEachOf(chat.messages, function (message, index, innerCallback) {
-		      		userDto.findOne({ 'username': message.owner }, function(err2, user){
-		      			result.push({	order: message.id, 
-		      						 	name : user.name,
-		      						 	isOwner: message.owner == currentUser ? true : false,
-		      						 	msg : message.message, 
-		      						 	date : util.formatDate('MM/dd hh:mm:ss', message.datetime)
+		      		userDto.findOne({ username: message.owner }, function(err2, user){
+		      			result.push({ order: message.id, 
+		      						  name : user.name,
+		      						  isOwner: message.owner == currentUser ? true : false,
+		      						  msg : message.message, 
+		      						  date : util.formatDate('MM/dd hh:mm:ss', message.datetime)
 		      						});
 		      			return innerCallback(); 
 					});
@@ -71,13 +85,13 @@ module.exports = function(app, mongoose, io){
 		});
 	});
 
-	// MAIN CHAT - PUBLIC
-	router.get('/mean/api/mainChat', function(request, response, next) {
+	//PUBLIC
+	router.get('/mean/api/get/main-chat', function(request, response, next) {
 		async.waterfall([
 		    function(callback) {
 		    	chatDto.findOne({"name" : 'global-chat'}, function(err, chat){
 		        	if(err) response.send(err);
-		        	globalChatId = chat._id;
+		        	currentChatId = chat._id;
 		        	callback(null, chat);
 		        });
 		    },
@@ -103,21 +117,24 @@ module.exports = function(app, mongoose, io){
 		});
 	});
 
-	//SOCKET LISTENERS
+	//LISTENERS & EMITERS
 	var nicknames = {};
 	io.sockets.on('connection', function(socket){
+
 		socket.on('user:typing', function(data){
 			io.sockets.emit('user:status', { name: socket.userLogged.name, isTyping: data});
 		});
 
-		socket.on('message:send', function(data){
+		socket.on('message:send', function(client_message){
 			async.waterfall([
 				function(callback) {
-					chatDto.aggregate([{$project:{total:{$size:"$messages"}}}], function(err, result){
+					var query = [{ $match: { _id: currentChatId} }, { $project:{ total:{ $size: "$messages" }}}];
+					chatDto.aggregate(query, function(err, count){
 						var message = {
-							id: (result[0].total + 1),
-							message: data,
+							id: (count[0].total + 1),
+							message: client_message.message,
 							owner: socket.userLogged.username,
+							to: client_message.type == 1 ? [] : [client_message.selectedUser],
 							seen: false,
 							datetime: new Date()
 						};
@@ -125,14 +142,14 @@ module.exports = function(app, mongoose, io){
 					});
 				},
 				function(message, callback) {
-					chatDto.findByIdAndUpdate(globalChatId, { $push: { messages: message }}, { new: true }, function (err, chat) {
+					chatDto.findByIdAndUpdate(currentChatId, {$push: { messages: message }}, { new: true }, function (err, chat) {
 			 			if (err) return console.error(err);
 			 			callback(null, 'Success');
 			 		});
 				}
 			], function (err, result) {
 				if (err) return console.error(err);
-			    io.sockets.emit('message:new', {msg: data, name: socket.userLogged.name, date: dateFormat.asString('MM/dd hh:mm:ss', new Date())});
+			    io.sockets.emit('message:new', {msg: client_message.message, name: socket.userLogged.name, date: util.formatDate('MM/dd hh:mm:ss', new Date())});
 			});
 		});
 
@@ -159,10 +176,3 @@ module.exports = function(app, mongoose, io){
 	});
 	return router;
 };
-
-
-function fillTransaction(code, msg, result){
-	transaction.code = code;
-	transaction.message = msg;
-	transaction.result = result;
-}
