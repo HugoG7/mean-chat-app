@@ -64,6 +64,7 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 										  type: $scope.chat.type,
 										  selectedUser: $scope.chat.selectedUser });
 		}
+		
 		$scope.chat.input = '';
 	}
 
