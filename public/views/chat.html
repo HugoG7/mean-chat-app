@@ -21,7 +21,7 @@
 					<div class="panel-heading">
 						<strong>inbox</strong>
 					</div>
-					<div class="panel-body" id="chat" ng-bind-html="chat.messages"></div>
+					<div class="panel-body" ng-repeat="chat in chat.chats" ng-show="chat.enabled" ng-bind-html="chat.messages"></div>
 					<div class="panel-footer" ng-bind-html="chat.typing"></div>
 				</div>
 				<form class="input-group" id="formMessage">

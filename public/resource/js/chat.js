@@ -27,12 +27,11 @@ myapp.factory('socket', ['$rootScope', function($rootScope){
 }]);
 
 myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', function($scope, $http, $cookies, socket) {
-  	$scope.chat = { input: '', messages: '', type: 1, selectedUser: '', currentUser: ''};
+  	$scope.chat = { currentUser: '', input: '', chats: [ /*{ name: '', messages: '', enabled: false }*/ ]};
 
   	/** LOAD USER IN SESSION **/
   	$http.get('/chat/mean/api/get/user')
 	.success(function(user){
-		//$cookies.put('currentSession', JSON.stringify(data)); - Save variables in cookies (for json use stringify)
 		$scope.chat.currentUser = user.username;
 		socket.emit('user:login', user);
 	})
@@ -50,7 +49,7 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 	/** LOAD MAIN CHAT **/
 	$http.get('/chat/mean/api/get/main-chat')
 	.success(function(chat){
-		buildChatByType(chat);
+		buildChat(chat);
 	})
 	.error(function(error){
 		console.log('Error: ' + error);
@@ -61,15 +60,15 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 	$scope.sendMessage = function(){
 		if($scope.chat.input != ''){
 			socket.emit('message:send', { message: $scope.chat.input,
-										  type: $scope.chat.type,
-										  selectedUser: $scope.chat.selectedUser });
+										  chatName:	$scope.chat.chats[getCurrentChat($scope.chat.chats)].name
+										});
 		}
 		
 		$scope.chat.input = '';
 	}
 
-	socket.on('message:new', function(data){
-		$scope.chat.messages += '<strong>' + data.name  + '|' + data.date + '</strong> -' + data.msg + '<br />';
+	socket.on('message:new', function(message){
+		AddMessageToChat(message);
 	});
 
 	/** HANDLE OF TYPING STATUS  **/
@@ -97,17 +96,15 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 		if(isMain){
 			$http.get('/chat/mean/api/get/main-chat')
 			.success(function(chat){
-				buildChatByType(chat);
+				buildChat(chat);
 			})
 			.error(function(error){
 				console.log('Error: ' + error);
 			});
 		}else{
-			$scope.chat.selectedUser = selectedUser;
-			$http.get('/chat/mean/api/get/private-chat', { params:{ selectedUser: $scope.chat.selectedUser }} )
+			$http.get('/chat/mean/api/get/private-chat', { params:{ selectedUser: selectedUser }} )
 			.success(function(chat){
-				$scope.chat.type = 2;
-				buildChatByType(chat);
+				buildChat(chat);
 			})
 			.error(function(error){
 				console.log('Error: ' + error);
@@ -119,12 +116,72 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 		$(event.target).addClass('active');
 	}
 
-	function buildChatByType(messages){
+	function buildChat(newChat){
+		var statusChat = existChat(newChat.name, $scope.chat.chats);
+		if(!statusChat.exist){
+			statusChat.index = ($scope.chat.chats.push({ name: newChat.name })) - 1;
+		}
+
 		var logMessage = '';
-		angular.forEach(messages, function(value, key) {
+		angular.forEach(newChat.chat, function(value, key) {
 		  	logMessage += '<strong>' + value.name  + '|' + value.date + '</strong> -' + value.msg + '<br />';
 		}, null);
 
-		$scope.chat.messages = logMessage;
+		turnOffAllChats($scope.chat.chats);
+		$scope.chat.chats[statusChat.index].enabled = true;
+		$scope.chat.chats[statusChat.index].messages = logMessage;
+	}
+
+	function AddMessageToChat(newMessage){
+		var statusChat = existChat(newMessage.name, $scope.chat.chats);
+		if(!statusChat.exist){
+			//NO HACER NADA YA O UNA BANDERA DE ALERTA 
+			alert('Tienes un nuevo mensaje');
+			return false;
+		}
+
+		if(!$scope.chat.chats[statusChat.index].enabled){
+			//NO HACER NADA YA O UNA BANDERA DE ALERTA 
+			alert('Tienes un nuevo mensaje');
+			return false;
+		}
+
+		var logMessage = $scope.chat.chats[statusChat.index].messages;
+		angular.forEach(newMessage.chat, function(value, key) {
+		  	logMessage += '<strong>' + value.name  + '|' + value.date + '</strong> -' + value.msg + '<br />';
+		}, null);
+
+		$scope.chat.chats[statusChat.index].messages = logMessage;
 	}
 }]);
+
+var global;
+
+function existChat(name, chats){
+	var status = { exist: false, index: -1};
+	for(var i = 0; i < chats.length; i++){
+		if(chats[i].name == name){
+			status.exist = true;
+			status.index = i;
+			break;
+		}
+	}
+	return status;
+}
+
+function turnOffAllChats(chats){
+	for(var i = 0; i < chats.length; i++){
+		chats[i].enabled = false;
+	}
+}
+
+function getCurrentChat(chats){
+	var index = -1;
+	for(var i = 0; i <= chats.length; i++){
+		if(chats[i].enabled){
+			index = i;
+			break;
+		}
+	}
+	return index;
+}

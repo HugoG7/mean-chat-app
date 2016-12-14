@@ -25,7 +25,6 @@ module.exports = function(app, mongoose, io){
 	//MOONGOSE PLURALIZE THE NAMES THATS MEANS chat = chats, so we override the collection add 3rd param 'chat'
 	var userDto = mongoose.model('users');
 	var chatDto = mongoose.model('chat', chatSchema, 'chat');
-	var currentChatId = "";
 
 	//CALLBACKS
 	router.get('/mean/api/get/user', function(request, response, next) {
@@ -34,6 +33,7 @@ module.exports = function(app, mongoose, io){
 
 	//PRIVATE
 	router.get('/mean/api/get/private-chat', function(request, response, next) {
+		var currentChatId = "";
 		var currentUser = request.session.userSession.username;
 		var selectedUser = request.query.selectedUser;
 		async.waterfall([
@@ -62,11 +62,10 @@ module.exports = function(app, mongoose, io){
 		        });
 		    },
 		    function(chat, callback) {
-		    	console.log('8****** NO');
-		    	var result = [];
+		    	var result = { name: chat.name, chat: []};
 		      	async.forEachOf(chat.messages, function (message, index, innerCallback) {
 		      		userDto.findOne({ username: message.owner }, function(err2, user){
-		      			result.push({ order: message.id, 
+		      			result.chat.push({ order: message.id, 
 		      						  name : user.name,
 		      						  isOwner: message.owner == currentUser ? true : false,
 		      						  msg : message.message, 
@@ -80,7 +79,7 @@ module.exports = function(app, mongoose, io){
 				});
 		    }
 		], function (err, result) {
-			result = util.sortListById(result, 'asc');
+			result.chat = util.sortListById(result.chat, 'asc');
 		    response.json(result);
 		});
 	});
@@ -91,18 +90,17 @@ module.exports = function(app, mongoose, io){
 		    function(callback) {
 		    	chatDto.findOne({"name" : 'global-chat'}, function(err, chat){
 		        	if(err) response.send(err);
-		        	currentChatId = chat._id;
 		        	callback(null, chat);
 		        });
 		    },
 		    function(chat, callback) {
-		    	var result = [];
+		    	var result = { name: chat.name, chat: []};
 		      	async.forEachOf(chat.messages, function (message, index, innerCallback) {
 		      		userDto.findOne({ 'username': message.owner }, function(err2, user){
-						result.push({	order: message.id, 
-		      						 	name : user.name, 
-		      						 	msg : message.message, 
-		      						 	date : util.formatDate('MM/dd hh:mm:ss', message.datetime)
+						result.chat.push({	order: message.id, 
+		      						 		name : user.name, 
+		      						 		msg : message.message, 
+		      						 		date : util.formatDate('MM/dd hh:mm:ss', message.datetime)
 		      						});		      			
 						return innerCallback(); 
 					});
@@ -112,7 +110,7 @@ module.exports = function(app, mongoose, io){
 				});
 		    }
 		], function (err, result) {
-			result = util.sortListById(result, 'asc');
+			result.chat = util.sortListById(result.chat, 'asc');
 		    response.json(result);
 		});
 	});
@@ -126,15 +124,17 @@ module.exports = function(app, mongoose, io){
 		});
 
 		socket.on('message:send', function(client_message){
+			var currentChatId = "";
 			async.waterfall([
 				function(callback) {
-					var query = [{ $match: { _id: currentChatId} }, { $project:{ total:{ $size: "$messages" }}}];
+					var query = [{ $match: { name: client_message.chatName } }, { $project:{ total:{ $size: "$messages" }}}];
 					chatDto.aggregate(query, function(err, count){
+						currentChatId = count[0]._id;
 						var message = {
 							id: (count[0].total + 1),
 							message: client_message.message,
 							owner: socket.userLogged.username,
-							to: client_message.type == 1 ? [] : [client_message.selectedUser],
+							//to: client_message.type == 1 ? [] : [client_message.selectedUser],
 							seen: false,
 							datetime: new Date()
 						};
@@ -149,7 +149,11 @@ module.exports = function(app, mongoose, io){
 				}
 			], function (err, result) {
 				if (err) return console.error(err);
-			    io.sockets.emit('message:new', {msg: client_message.message, name: socket.userLogged.name, date: util.formatDate('MM/dd hh:mm:ss', new Date())});
+				var response = { name: client_message.chatName, chat: []};
+				response.chat.push({ msg: client_message.message, 
+			    					 name: socket.userLogged.name,
+			    					 date: util.formatDate('MM/dd hh:mm:ss', new Date())});
+			    io.sockets.emit('message:new', response);
 			});
 		});
 
