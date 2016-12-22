@@ -22,7 +22,7 @@
 						<strong>inbox</strong>
 					</div>
 					<div class="panel-body" ng-repeat="chat in chat.chats" ng-show="chat.enabled" ng-bind-html="chat.messages"></div>
-					<div class="panel-footer" ng-bind-html="chat.typing"></div>
+					<div class="panel-footer" ng-repeat="chat in chat.chats" ng-show="chat.enabled" ng-bind-html="chat.typing"></div>
 				</div>
 				<form class="input-group" id="formMessage">
 					<input type="text" id="message" class="form-control input-md" ng-model="chat.input" ng-blur="onTypingOut()" ng-keyup="onTyping($event)">
@@ -34,7 +34,7 @@
 			<div id="content-users" class="col-md-5" >
 				<h4>Users connected:</h4>
 				<ul id="lsUsers" class="list-group">
-					<li class="list-group-item active" ng-click="onSelectChat($event, null, true)">Main Chat</li>
+					<li class="list-group-item active" ng-click="onSelectChat($event, null, true)">Main Chat <span class="badge">{{ chat.chats[0].newmessages }}</span></li>
 					<li class="list-group-item" ng-class="{ disabled: chat.currentUser == user }" ng-repeat="user in chat.userList" ng-click="onSelectChat($event, user, false)">{{user}}</li>
 				</ul>
 			</div>

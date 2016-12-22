@@ -27,7 +27,7 @@ myapp.factory('socket', ['$rootScope', function($rootScope){
 }]);
 
 myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', function($scope, $http, $cookies, socket) {
-  	$scope.chat = { currentUser: '', input: '', chats: [ /*{ name: '', messages: '', enabled: false }*/ ]};
+  	$scope.chat = { currentUser: '', input: '', chats: [ /*{ name: '', messages: '', enabled: false, typing: '' }*/  ]};
 
   	/** LOAD USER IN SESSION **/
   	$http.get('/chat/mean/api/get/user')
@@ -47,7 +47,7 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 	});
 
 	/** LOAD MAIN CHAT **/
-	$http.get('/chat/mean/api/get/main-chat')
+	$http.get('/chat/mean/api/get/public-chat')
 	.success(function(chat){
 		buildChat(chat);
 	})
@@ -61,30 +61,41 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 		if($scope.chat.input != ''){
 			socket.emit('message:send', { message: $scope.chat.input,
 										  chatName:	$scope.chat.chats[getCurrentChat($scope.chat.chats)].name
-										});
+			});
 		}
 		
 		$scope.chat.input = '';
 	}
 
 	socket.on('message:new', function(message){
-		AddMessageToChat(message);
+		addMessageToChat(message);
 	});
 
 	/** HANDLE OF TYPING STATUS  **/
 	$scope.onTyping = function(event){
-		socket.emit('user:typing', true);
+		socket.emit('user:typing', { isTyping : true,
+									 chatName:	$scope.chat.chats[getCurrentChat($scope.chat.chats)].name
+		});
 	}
 
 	$scope.onTypingOut = function(event){
-		socket.emit('user:typing', false);
+		socket.emit('user:typing', { isTyping : false,
+									 chatName:	$scope.chat.chats[getCurrentChat($scope.chat.chats)].name
+		});
 	}
 
 	socket.on('user:status', function(data){
+		var statusChat = existChat(data.chatName, $scope.chat.chats);
+		if(!statusChat.exist)
+			return false;
+
+		if(!$scope.chat.chats[statusChat.index].enabled)
+			return false;
+
 		if(data.isTyping)
-			$scope.chat.typing = '<strong>' + data.name  + ':</strong> is typing...';
+			$scope.chat.chats[statusChat.index].typing = '<strong>' + data.name  + ':</strong> is typing...';
 		else
-			$scope.chat.typing = '';
+			$scope.chat.chats[statusChat.index].typing = '';
 	});
 
 	/** EVENT TO SELECTED A USER  **/
@@ -94,7 +105,7 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 			return false;
 
 		if(isMain){
-			$http.get('/chat/mean/api/get/main-chat')
+			$http.get('/chat/mean/api/get/public-chat')
 			.success(function(chat){
 				buildChat(chat);
 			})
@@ -127,22 +138,20 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 		  	logMessage += '<strong>' + value.name  + '|' + value.date + '</strong> -' + value.msg + '<br />';
 		}, null);
 
-		turnOffAllChats($scope.chat.chats);
+		switchChatFocus($scope.chat.chats);
 		$scope.chat.chats[statusChat.index].enabled = true;
 		$scope.chat.chats[statusChat.index].messages = logMessage;
 	}
 
-	function AddMessageToChat(newMessage){
+	function addMessageToChat(newMessage){
 		var statusChat = existChat(newMessage.name, $scope.chat.chats);
 		if(!statusChat.exist){
 			//NO HACER NADA YA O UNA BANDERA DE ALERTA 
-			alert('Tienes un nuevo mensaje');
 			return false;
 		}
 
 		if(!$scope.chat.chats[statusChat.index].enabled){
 			//NO HACER NADA YA O UNA BANDERA DE ALERTA 
-			alert('Tienes un nuevo mensaje');
 			return false;
 		}
 
@@ -169,7 +178,7 @@ function existChat(name, chats){
 	return status;
 }
 
-function turnOffAllChats(chats){
+function switchChatFocus(chats){
 	for(var i = 0; i < chats.length; i++){
 		chats[i].enabled = false;
 	}

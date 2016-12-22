@@ -3,6 +3,8 @@ var library = new require('../util/library.js').Library();
 var async = require('async');
 var util = new library.Util();
 var transaction = {};
+
+/**** MODULE ****/
 module.exports = function(app, mongoose, io){
 	var router = app.Router();
 
@@ -11,27 +13,62 @@ module.exports = function(app, mongoose, io){
 	var chatSchema = new Schema({
 		name: String,
 		type: String,
-		owner: [String],
+		owners: [String],
 		messages: [{ 
 					_id: false,
 					id: Number,
 					message: String,
 					owner: String,
-					to: [String],
-					seen: Boolean,
-					datetime: Date,
+					recipients: [
+						{ to: String, seen: Boolean, seenDate: Date }
+					],
+					created: Date,
 				  }]
 	}, { versionKey: false });
+
 	//MOONGOSE PLURALIZE THE NAMES THATS MEANS chat = chats, so we override the collection add 3rd param 'chat'
 	var userDto = mongoose.model('users');
 	var chatDto = mongoose.model('chat', chatSchema, 'chat');
 
-	//CALLBACKS
+	/***** CALLBACKS *****/
+
+	//GET USER LOGGED
 	router.get('/mean/api/get/user', function(request, response, next) {
 		response.json(request.session.userSession);
 	});
 
-	//PRIVATE
+	//PUBLIC CHAT
+	router.get('/mean/api/get/public-chat', function(request, response, next) {
+		async.waterfall([
+		    function(callback) {
+		    	chatDto.findOne({"name" : 'global-chat'}, function(err, chat){
+		        	if(err) response.send(err);
+		        	callback(null, chat);
+		        });
+		    },
+		    function(chat, callback) {
+		    	var result = { name: chat.name, chat: []};
+		      	async.forEachOf(chat.messages, function (message, index, innerCallback) {
+		      		userDto.findOne({ 'username': message.owner }, function(err2, user){
+						result.chat.push({	order: message.id, 
+		      						 		name : user.name, 
+		      						 		msg : message.message, 
+		      						 		date : util.formatDate('MM/dd hh:mm:ss', message.created)
+		      						});		      			
+						return innerCallback(); 
+					});
+				}, function (err) {
+					  if (err) console.error(err);
+					  callback(null, result);
+				});
+		    }
+		], function (err, result) {
+			result.chat = util.sortListById(result.chat, 'asc');
+		    response.json(result);
+		});
+	});
+
+	//PRIVATE CHAT
 	router.get('/mean/api/get/private-chat', function(request, response, next) {
 		var currentChatId = "";
 		var currentUser = request.session.userSession.username;
@@ -39,10 +76,10 @@ module.exports = function(app, mongoose, io){
 		async.waterfall([
 		    function(callback) {
 		    	var wait = true;
-		    	chatDto.findOne({"owner" : { $size: 2, $all: [currentUser, selectedUser]}}, function(err, chat){
+		    	chatDto.findOne({ owners : { $size: 2, $all: [currentUser, selectedUser]}}, function(err, chat){
 		        	if(err) response.send(err);
 		        	if(chat == null || chat == 'undefained'){
-		        		chatDto.create({name: [currentUser, selectedUser].join('-'), type: 'private', owner: [currentUser, selectedUser]}, 
+		        		chatDto.create({name: [currentUser, selectedUser].join('-'), type: 'private', owners: [currentUser, selectedUser]}, 
 		        			function(err, newChat){
 		        			if(err) response.send(err);
 		        			chat = newChat;
@@ -69,7 +106,7 @@ module.exports = function(app, mongoose, io){
 		      						  name : user.name,
 		      						  isOwner: message.owner == currentUser ? true : false,
 		      						  msg : message.message, 
-		      						  date : util.formatDate('MM/dd hh:mm:ss', message.datetime)
+		      						  date : util.formatDate('MM/dd hh:mm:ss', message.created)
 		      						});
 		      			return innerCallback(); 
 					});
@@ -84,65 +121,35 @@ module.exports = function(app, mongoose, io){
 		});
 	});
 
-	//PUBLIC
-	router.get('/mean/api/get/main-chat', function(request, response, next) {
-		async.waterfall([
-		    function(callback) {
-		    	chatDto.findOne({"name" : 'global-chat'}, function(err, chat){
-		        	if(err) response.send(err);
-		        	callback(null, chat);
-		        });
-		    },
-		    function(chat, callback) {
-		    	var result = { name: chat.name, chat: []};
-		      	async.forEachOf(chat.messages, function (message, index, innerCallback) {
-		      		userDto.findOne({ 'username': message.owner }, function(err2, user){
-						result.chat.push({	order: message.id, 
-		      						 		name : user.name, 
-		      						 		msg : message.message, 
-		      						 		date : util.formatDate('MM/dd hh:mm:ss', message.datetime)
-		      						});		      			
-						return innerCallback(); 
-					});
-				}, function (err) {
-					  if (err) console.error(err);
-					  callback(null, result);
-				});
-		    }
-		], function (err, result) {
-			result.chat = util.sortListById(result.chat, 'asc');
-		    response.json(result);
-		});
-	});
-
-	//LISTENERS & EMITERS
+	//SOCKET [LISTENERS, EMITERS]
 	var nicknames = {};
 	io.sockets.on('connection', function(socket){
 
-		socket.on('user:typing', function(data){
-			io.sockets.emit('user:status', { name: socket.userLogged.name, isTyping: data});
+		socket.on('disconnect', function(data){
+			if(!socket.userLogged) return;
+			delete nicknames[socket.userLogged.username];
+			updateNickNames();
 		});
 
 		socket.on('message:send', function(client_message){
 			var currentChatId = "";
 			async.waterfall([
 				function(callback) {
+					var message = {
+							message: client_message.message,
+							owner: socket.userLogged.username,
+							created: new Date()
+					};
+
 					var query = [{ $match: { name: client_message.chatName } }, { $project:{ total:{ $size: "$messages" }}}];
 					chatDto.aggregate(query, function(err, count){
 						currentChatId = count[0]._id;
-						var message = {
-							id: (count[0].total + 1),
-							message: client_message.message,
-							owner: socket.userLogged.username,
-							//to: client_message.type == 1 ? [] : [client_message.selectedUser],
-							seen: false,
-							datetime: new Date()
-						};
+						message.id =  count[0].total + 1,
 						callback(null, message);
 					});
 				},
 				function(message, callback) {
-					chatDto.findByIdAndUpdate(currentChatId, {$push: { messages: message }}, { new: true }, function (err, chat) {
+					chatDto.findByIdAndUpdate(currentChatId, { $push: { messages: message }}, { new: true }, function (err, chat) {
 			 			if (err) return console.error(err);
 			 			callback(null, 'Success');
 			 		});
@@ -168,10 +175,11 @@ module.exports = function(app, mongoose, io){
 			}
 		});
 
-		socket.on('disconnect', function(data){
-			if(!socket.userLogged) return;
-			delete nicknames[socket.userLogged.username];
-			updateNickNames();
+		socket.on('user:typing', function(chat){
+			io.sockets.emit('user:status', { 
+												name: socket.userLogged.name, 
+												isTyping: chat.isTyping, 
+												chatName: chat.chatName});
 		});
 
 		function updateNickNames(){
