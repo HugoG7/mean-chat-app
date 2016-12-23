@@ -9,7 +9,8 @@ module.exports = function(app, mongoose){
 		name: String,
 		username: String,
 		password: String,
-		email: String
+		email: String,
+		lastConnection: Date 
 	}, { versionKey: false });
 	var userDto = mongoose.model('users', userSchema);
 

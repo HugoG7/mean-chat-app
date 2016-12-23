@@ -30,20 +30,24 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
   	$scope.chat = { currentUser: '', input: '', chats: [ /*{ name: '', messages: '', enabled: false, typing: '' }*/  ]};
 
   	/** LOAD USER IN SESSION **/
-  	$http.get('/chat/mean/api/get/user')
-	.success(function(user){
-		$scope.chat.currentUser = user.username;
-		socket.emit('user:login', user);
+  	$http.get('/chat/mean/api/get/session')
+	.success(function(session){
+		$scope.chat.currentUser = session.username;
+		socket.emit('user:login', session);
 	})
 	.error(function(error){ 
 		console.log('Error: ' + error);
 	});
 
 	socket.on('user:list', function(users){
+		var usersOnline = 0;
 		$scope.chat.userList = [];
-		for(var username in users){
-			$scope.chat.userList.push(username);
+		for(var i in users){
+			$scope.chat.userList.push(users[i]);
+			if(users[i].online)
+				usersOnline++;
 		}
+		$scope.chat.usersOnline = usersOnline;
 	});
 
 	/** LOAD MAIN CHAT **/
@@ -113,7 +117,7 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 				console.log('Error: ' + error);
 			});
 		}else{
-			$http.get('/chat/mean/api/get/private-chat', { params:{ selectedUser: selectedUser }} )
+			$http.get('/chat/mean/api/get/private-chat', { params:{ selectedUser: selectedUser.username }} )
 			.success(function(chat){
 				buildChat(chat);
 			})

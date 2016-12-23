@@ -11,7 +11,7 @@
 		<header>
 			<nav class="jumbotron text-center">
 				<h1>Room Chat <span class="label label-info">MEAN-CHAT</span></h1>
-				<h3>Current users online: <strong>{{chat.userList.length}}</strong></h3>
+				<h3>Current users online: <strong>{{chat.usersOnline}}</strong></h3>
 			</nav>
 		</header>
 
@@ -35,7 +35,7 @@
 				<h4>Users connected:</h4>
 				<ul id="lsUsers" class="list-group">
 					<li class="list-group-item active" ng-click="onSelectChat($event, null, true)">Main Chat <span class="badge">{{ chat.chats[0].newmessages }}</span></li>
-					<li class="list-group-item" ng-class="{ disabled: chat.currentUser == user }" ng-repeat="user in chat.userList" ng-click="onSelectChat($event, user, false)">{{user}}</li>
+					<li class="list-group-item" ng-class="{ disabled: chat.currentUser == user.username }" ng-repeat="user in chat.userList" ng-click="onSelectChat($event, user, false)">{{user.username}} <span ng-if="chat.currentUser != user.username" class="label" ng-class="{ 'label-success': user.online, 'label-default': !user.online }">{{user.online ? 'Online' : 'Offline'}}</span></li>
 				</ul>
 			</div>
 		</div>

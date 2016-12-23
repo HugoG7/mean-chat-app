@@ -19,9 +19,7 @@ module.exports = function(app, mongoose, io){
 					id: Number,
 					message: String,
 					owner: String,
-					recipients: [
-						{ to: String, seen: Boolean, seenDate: Date }
-					],
+					recipients: [{ to: String, seen: Boolean, seenDate: Date }],
 					created: Date,
 				  }]
 	}, { versionKey: false });
@@ -29,11 +27,25 @@ module.exports = function(app, mongoose, io){
 	//MOONGOSE PLURALIZE THE NAMES THATS MEANS chat = chats, so we override the collection add 3rd param 'chat'
 	var userDto = mongoose.model('users');
 	var chatDto = mongoose.model('chat', chatSchema, 'chat');
+	var nicknames = [ /* { username: username, name: name, online: true, lastConnection: date } */ ];
+
+	if(nicknames.length <= 0){
+		userDto.find({/*username:{ $not: userSession.username },*/enabled : true }, 'name username email lastConnection', function(error, users){
+			if (error) console.error(error);
+			for(var i = 0; i < users.length; i++){
+				nicknames.push({
+					name : users[i].name,
+					username : users[i].username,
+					online : false,
+					lastConnection : users[i].lastConnection
+				});
+			}
+		});
+	}
 
 	/***** CALLBACKS *****/
-
 	//GET USER LOGGED
-	router.get('/mean/api/get/user', function(request, response, next) {
+	router.get('/mean/api/get/session', function(request, response, next) {
 		response.json(request.session.userSession);
 	});
 
@@ -122,12 +134,13 @@ module.exports = function(app, mongoose, io){
 	});
 
 	//SOCKET [LISTENERS, EMITERS]
-	var nicknames = {};
 	io.sockets.on('connection', function(socket){
 
 		socket.on('disconnect', function(data){
-			if(!socket.userLogged) return;
-			delete nicknames[socket.userLogged.username];
+			if(!socket.sessionUser) return;
+			util.updateByProperty(nicknames, { property: 'username', value: socket.sessionUser.username }, 
+								 [{ property: 'online', value: false }, { property: 'lastConnection', value: new Date() }]);
+			updateLastConnection(socket.sessionUser.username);
 			updateNickNames();
 		});
 
@@ -137,7 +150,7 @@ module.exports = function(app, mongoose, io){
 				function(callback) {
 					var message = {
 							message: client_message.message,
-							owner: socket.userLogged.username,
+							owner: socket.sessionUser.username,
 							created: new Date()
 					};
 
@@ -158,32 +171,32 @@ module.exports = function(app, mongoose, io){
 				if (err) return console.error(err);
 				var response = { name: client_message.chatName, chat: []};
 				response.chat.push({ msg: client_message.message, 
-			    					 name: socket.userLogged.name,
+			    					 name: socket.sessionUser.name,
 			    					 date: util.formatDate('MM/dd hh:mm:ss', new Date())});
 			    io.sockets.emit('message:new', response);
 			});
 		});
 
-		socket.on('user:login', function(data, callback){
-			if(data.username in nicknames){
-				callback(false);
-			}else{
-				callback(true);
-				socket.userLogged = data;
-				nicknames[socket.userLogged.username] = 1;
-				updateNickNames();
-			}
+		socket.on('user:login', function(user, callback){
+			socket.sessionUser = user;
+			util.updateByProperty(nicknames, { property: 'username', value: user.username }, 
+								 [{ property: 'online', value: true }, { property: 'lastConnection', value: new Date() }]);
+			updateLastConnection(user.username); // QUITAR NO NECESARIO
+			updateNickNames();
 		});
 
 		socket.on('user:typing', function(chat){
-			io.sockets.emit('user:status', { 
-												name: socket.userLogged.name, 
-												isTyping: chat.isTyping, 
-												chatName: chat.chatName});
+			io.sockets.emit('user:status', { name: socket.sessionUser.name, isTyping: chat.isTyping, chatName: chat.chatName });
 		});
 
 		function updateNickNames(){
 			io.sockets.emit('user:list', nicknames);
+		}
+
+		function updateLastConnection(username){
+			userDto.update({username: username}, { $set: { lastConnection: new Date()}}, function(err){
+				if(err) console.error(err);
+			});
 		}
 	});
 	return router;
