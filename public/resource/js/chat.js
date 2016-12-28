@@ -139,7 +139,7 @@ myapp.controller('chatController', ['$scope', '$http', '$cookies', 'socket', fun
 
 		var logMessage = '';
 		angular.forEach(newChat.chat, function(value, key) {
-		  	logMessage += '<strong>' + value.name  + '|' + value.date + '</strong> -' + value.msg + '<br />';
+		  	logMessage += '<strong>' + value.name  + '[' + value.date + ']:</strong> ' + value.msg + '<br />';
 		}, null);
 
 		switchChatFocus($scope.chat.chats);

@@ -19,7 +19,7 @@ module.exports = function(app, mongoose, io){
 					id: Number,
 					message: String,
 					owner: String,
-					recipients: [{ to: String, seen: Boolean, seenDate: Date }],
+					recipients: [{ _id: false, to: String, seen: Boolean, seenDate: Date }],
 					created: Date,
 				  }]
 	}, { versionKey: false });
@@ -100,7 +100,7 @@ module.exports = function(app, mongoose, io){
 		        	}else{
 		        		wait = false;
 		        	}
-		        	
+		        	// WORKAROUND TO NOT USE ASYNC
 		        	var waiting = setInterval(function(){
 		        		if(!wait){
 		        			clearInterval(waiting);
@@ -114,11 +114,12 @@ module.exports = function(app, mongoose, io){
 		    	var result = { name: chat.name, chat: []};
 		      	async.forEachOf(chat.messages, function (message, index, innerCallback) {
 		      		userDto.findOne({ username: message.owner }, function(err2, user){
-		      			result.chat.push({ order: message.id, 
-		      						  name : user.name,
-		      						  isOwner: message.owner == currentUser ? true : false,
-		      						  msg : message.message, 
-		      						  date : util.formatDate('MM/dd hh:mm:ss', message.created)
+		      			result.chat.push({ 
+		      							order: message.id, 
+		      						  	name : user.name,
+		      						  	isOwner: message.owner == currentUser ? true : false,
+		      						  	msg : message.message, 
+		      						  	date : util.formatDate('MM/dd hh:mm:ss', message.created)
 		      						});
 		      			return innerCallback(); 
 					});
@@ -151,17 +152,24 @@ module.exports = function(app, mongoose, io){
 					var message = {
 							message: client_message.message,
 							owner: socket.sessionUser.username,
-							created: new Date()
+							created: new Date(),
+							recipients: []
 					};
 
-					var query = [{ $match: { name: client_message.chatName } }, { $project:{ total:{ $size: "$messages" }}}];
-					chatDto.aggregate(query, function(err, count){
-						currentChatId = count[0]._id;
-						message.id =  count[0].total + 1,
+					var query = [{ $match: { name: client_message.chatName } }, { $project:{ total:{ $size: "$messages" }, owners: 1}}];
+					chatDto.aggregate(query, function(err, result){
+						currentChatId = result[0]._id;
+						message.id =  result[0].total + 1;
+						for(var i = 0; i < result[0].owners.length; i++){
+							if(result[0].owners[i] != null && result[0].owners[i] !== socket.sessionUser.username){
+								message.recipients.push({to: result[0].owners[i], seen: false});
+							}
+						}
 						callback(null, message);
 					});
 				},
 				function(message, callback) {
+					console.log(message);
 					chatDto.findByIdAndUpdate(currentChatId, { $push: { messages: message }}, { new: true }, function (err, chat) {
 			 			if (err) return console.error(err);
 			 			callback(null, 'Success');
@@ -177,7 +185,7 @@ module.exports = function(app, mongoose, io){
 			});
 		});
 
-		socket.on('user:login', function(user, callback){
+		socket.on('user:login', function(user){
 			socket.sessionUser = user;
 			util.updateByProperty(nicknames, { property: 'username', value: user.username }, 
 								 [{ property: 'online', value: true }, { property: 'lastConnection', value: new Date() }]);
