@@ -12,7 +12,7 @@ var app = express();
 
 //INIT SOCKET & MONGO DB
 var server = require('http').createServer(app);
-var socket = require('socket.io').listen(server);
+var io = require('socket.io').listen(server);
 var mongoose = require('mongoose');
 
 //INIT DATABASE INSTANCE
@@ -20,7 +20,7 @@ mongoose.connect("mongodb://localhost:27017/mean-chat");
 
 //ROUTES INCLUDES
 var login = require('./controllers/login-controller')(express, mongoose);
-var chat = require('./controllers/chat-controller')(express, mongoose, socket);
+var chat = require('./controllers/chat-controller')(express, mongoose, io);
 
 
 // INIT CONFIGURATION
@@ -45,6 +45,6 @@ app.get('/room/home', function(request, response){
 
 
 //RUN SERVER BY PORT 3000
-server.listen(3000, function(){
-	console.log("Server running and listen by port 3000");
+server.listen(8080, function(){
+	console.log("Server running and listen by port 8080");
 });

@@ -16,7 +16,7 @@ module.exports = function(app, mongoose){
 
 	//CALLBACKS
 	router.post('/mean/api/login', function(request, response, next) {
-		userDto.findOne({ 'name': request.body.username }, function(err, user){
+		userDto.findOne({ 'username': request.body.username }, function(err, user){
 			if(err) response.send(err);
 			if(user != null && user.password === request.body.password){
 				fillTransaction(1, 'Login Success', user);

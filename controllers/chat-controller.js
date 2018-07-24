@@ -156,7 +156,7 @@ module.exports = function(app, mongoose, io){
 							recipients: []
 					};
 
-					var query = [{ $match: { name: client_message.chatName } }, { $project:{ total:{ $size: "$messages" }, owners: 1}}];
+					var query = [{ $match: { name: client_message.chatName } }, { $project: { total: { $size: "$messages" }, owners: 1}}];
 					chatDto.aggregate(query, function(err, result){
 						currentChatId = result[0]._id;
 						message.id =  result[0].total + 1;
@@ -169,7 +169,6 @@ module.exports = function(app, mongoose, io){
 					});
 				},
 				function(message, callback) {
-					console.log(message);
 					chatDto.findByIdAndUpdate(currentChatId, { $push: { messages: message }}, { new: true }, function (err, chat) {
 			 			if (err) return console.error(err);
 			 			callback(null, 'Success');
@@ -189,7 +188,7 @@ module.exports = function(app, mongoose, io){
 			socket.sessionUser = user;
 			util.updateByProperty(nicknames, { property: 'username', value: user.username }, 
 								 [{ property: 'online', value: true }, { property: 'lastConnection', value: new Date() }]);
-			updateLastConnection(user.username); // QUITAR NO NECESARIO
+			//updateLastConnection(user.username); // QUITAR NO NECESARIO
 			updateNickNames();
 		});
 
