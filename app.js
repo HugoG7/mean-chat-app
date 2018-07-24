@@ -16,7 +16,9 @@ var io = require('socket.io').listen(server);
 var mongoose = require('mongoose');
 
 //INIT DATABASE INSTANCE
-mongoose.connect("mongodb://localhost:27017/mean-chat");
+var dbUrl = process.env.DB_URL || "localhost";
+var dbPort = process.env.DB_PORT || "27017";
+mongoose.connect("mongodb://" + dbUrl + ":" + dbPort + "/mean-chat");
 
 //ROUTES INCLUDES
 var login = require('./controllers/login-controller')(express, mongoose);
