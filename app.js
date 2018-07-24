@@ -18,7 +18,7 @@ var mongoose = require('mongoose');
 //INIT DATABASE INSTANCE
 var dbUrl = process.env.DB_URL || "localhost";
 var dbPort = process.env.DB_PORT || "27017";
-mongoose.connect("mongodb://" + dbUrl + ":" + dbPort + "/mean-chat");
+mongoose.connect("mongodb://" + dbUrl + ":" + dbPort + "/mean-chat", { useNewUrlParser: true });
 
 //ROUTES INCLUDES
 var login = require('./controllers/login-controller')(express, mongoose);
@@ -47,6 +47,6 @@ app.get('/room/home', function(request, response){
 
 
 //RUN SERVER BY PORT 3000
-server.listen(8080, function(){
-	console.log("Server running and listen by port 8080");
+server.listen(3000, function(){
+	console.log("Server running and listen by port " + 3000);
 });
