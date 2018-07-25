@@ -20,33 +20,45 @@ var dbUrl = process.env.DB_URL || "localhost";
 var dbPort = process.env.DB_PORT || "27017";
 mongoose.connect("mongodb://" + dbUrl + ":" + dbPort + "/mean-chat", { useNewUrlParser: true });
 
-//ROUTES INCLUDES
-var login = require('./controllers/login-controller')(express, mongoose);
-var chat = require('./controllers/chat-controller')(express, mongoose, io);
+mongoose.connection.on('connected', function() {
+	console.log('*** Connected to database instance', dbUrl, dbPort);
+
+	//ROUTES INCLUDES
+	var login = require('./controllers/login-controller')(express, mongoose);
+	var chat = require('./controllers/chat-controller')(express, mongoose, io);
 
 
-// INIT CONFIGURATION
-app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({secret: 'AB-CD-EF'}));
+	// INIT CONFIGURATION
+	app.use(logger('dev'));
+	app.use(bodyParser.json());
+	app.use(bodyParser.urlencoded({ extended: false }));
+	app.use(cookieParser());
+	app.use(express.static(path.join(__dirname, 'public')));
+	app.use(session({ secret: 'AB-CD-EF' }));
 
-app.use('/', login);
-app.use('/chat', chat);
+	app.use('/', login);
+	app.use('/chat', chat);
 
-//LOAD INIT VIEW
-app.get('/', function(request, response){
-	response.sendfile('./public/views/index.html');
+	//LOAD INIT VIEW
+	app.get('/', function (request, response) {
+		response.sendfile('./public/views/index.html');
+	});
+
+	app.get('/room/home', function (request, response) {
+		response.sendfile('./public/views/chat.html');
+	});
+
+	server.listen(3000, function(){
+		console.log("Server running and listen by port " + 3000);
+	});
 });
 
-app.get('/room/home', function(request, response){
-	response.sendfile('./public/views/chat.html');
+mongoose.connection.on('error', function(error) {
+	console.log('*** !!!Error connecting to database', error);
+	console.log('*** Trying reconnecting db....');
+	setTimeout(tryReconnectDB, 3000);
 });
 
-
-//RUN SERVER BY PORT 3000
-server.listen(3000, function(){
-	console.log("Server running and listen by port " + 3000);
-});
+function tryReconnectDB(){
+	mongoose.connect("mongodb://" + dbUrl + ":" + dbPort + "/mean-chat", { useNewUrlParser: true });
+}
